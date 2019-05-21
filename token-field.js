@@ -25,6 +25,11 @@ class TokenField extends LitElement {
                 font: 400 11px system-ui;
             }
 
+            #editorContainer:focus-within {
+                outline: -webkit-focus-ring-color auto 5px;
+                outline-offset: -2px;
+            }
+
             #editor {
                 outline: none;
                 border: none;
@@ -63,7 +68,7 @@ class TokenField extends LitElement {
 
     render() {
         return html`
-            <div id="editorContainer" role="textbox">
+            <div id="editorContainer" role="textbox" @mousedown=${this._onMouseDown}>
                 ${this.tokens.map(token => this._createToken(token))}
                 <input type="text" id="editor" @keydown=${this._onKeyDown}>
             </div>
@@ -84,6 +89,17 @@ class TokenField extends LitElement {
             event.preventDefault();
         } else if (event.key === 'Backspace' && editor.selectionStart == 0 && editor.selectionEnd == 0) {
             this.removeTokenByIndex(this.tokens.length -1);
+            event.preventDefault();
+        }
+    }
+
+    _onMouseDown(event) {
+        if (event.defaultPrevented) {
+            return;
+        }
+        let editor = this.shadowRoot.getElementById('editor');
+        if (event.target !== editor) {
+            editor.focus();
             event.preventDefault();
         }
     }
