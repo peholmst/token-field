@@ -23,6 +23,7 @@ class TokenField extends LitElement {
                 border-image: initial;
                 margin: 0;
                 font: 400 11px system-ui;
+                min-height: 19px;
             }
 
             #editorContainer:focus-within {
@@ -54,9 +55,8 @@ class TokenField extends LitElement {
 
     static get properties() {
         return {
-            value: { type: String, observe: true },
-            tokens: { type: Array },
-            tokenSeparator: { type : String }
+            tokens: { type: Array, attribute: false },
+            tokenSeparator: { type: String, attribute: false }
         };
     }
 
@@ -104,15 +104,9 @@ class TokenField extends LitElement {
         }
     }
 
-    updated(changedProperties) {
-        if (changedProperties.has('value')) {
-            this._parseTokens(this.value);
-        }
-    }
-
     addToken(token) {
         if (!this.containsToken(token)) {
-            console.log(`Adding token ${token}`);
+            console.log(`Adding token "${token}"`);
             this.tokens.push(token);
             this.requestUpdate();
         }
@@ -125,7 +119,7 @@ class TokenField extends LitElement {
     removeTokenByIndex(tokenIndex) {
         if (tokenIndex > -1 && tokenIndex < this.tokens.length) {
             let removed = this.tokens.splice(tokenIndex, 1);
-            console.log(`Removed token ${removed} at index ${tokenIndex}`);
+            console.log(`Removed token "${removed}" at index ${tokenIndex}`);
             this.requestUpdate();
         }
     }
@@ -136,10 +130,6 @@ class TokenField extends LitElement {
 
     indexOf(token) {
         return this.tokens.indexOf(token);
-    }
-
-    _parseTokens(value) {
-        this.tokens = value.split(this.tokenSeparator);
     }
 
     _createToken(token) {
