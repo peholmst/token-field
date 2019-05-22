@@ -41,6 +41,11 @@ class TokenField extends LitElement {
                 min-width: 50px;
             }
 
+            #editor.inline {
+                min-width: 5px;
+                flex-grow: 0;
+            }
+
             .token {
                 background-color: greenyellow;
                 border-radius: 4px;
@@ -50,6 +55,10 @@ class TokenField extends LitElement {
                 margin-right: 5px;
                 margin-bottom: 2px;
             }    
+
+            #canvas {
+                display: none;
+            }
         `;
     }
 
@@ -64,40 +73,73 @@ class TokenField extends LitElement {
         super();
         this.tokenSeparator = " ";
         this.tokens = [];
+        this.inlineEditorPosition = -1;
     }
 
     render() {
         return html`
             <div id="editorContainer" role="textbox" @mousedown=${this._onMouseDown}>
-                ${this.tokens.map(token => this._createToken(token))}
-                <input type="text" id="editor" @keydown=${this._onKeyDown}>
+                ${this.tokens.map(function() {
+                    let i = 0;
+                    return (token) => this._createToken(token, i++);
+                }.bind(this)())}
+                <input type="text" id="editor" style="order: ${Number.MAX_SAFE_INTEGER}" @keydown=${this._onEditorKeyDown} @input=${this._onEditorInput}>
             </div>
+            <canvas id="canvas"></canvas>
         `;
     }
 
-    _onKeyDown(event) {
+    _onEditorKeyDown(event) {
         if (event.defaultPrevented) {
             return;
         }
-        let editor = event.target;
+        const editor = event.target;
+        const cursorAtTheStart = editor.selectionStart == 0 && editor.selectionEnd == 0;
+        const cursorAtTheEnd = editor.selectionStart == editor.value.length && editor.selectionEnd == editor.selectionStart;
+        const editorIsEmpty = editor.value.length == 0;
+
         if (event.key === 'Enter' || event.key === this.tokenSeparator) {
-            let token = editor.value.trim();
+            const token = editor.value.trim();
             if (token.length > 0) {
-                this.addToken(token);
-                editor.value = '';
+                if (this._isInlineEditor()) {
+                    this.addTokenAtPosition(token, this.inlineEditorPosition);
+                    this._moveEditor(this.inlineEditorPosition +1);
+                } else {
+                    this.addToken(token);
+                }
+                this._clearEditor();
             }
             event.preventDefault();
-        } else if (event.key === 'Backspace' && editor.selectionStart == 0 && editor.selectionEnd == 0) {
-            this.removeTokenByIndex(this.tokens.length -1);
+        } else if (event.key === 'Backspace' && cursorAtTheStart && editorIsEmpty) {
+            if (this._isInlineEditor()) {
+                this.removeTokenAtPosition(this.inlineEditorPosition -1);
+                this._moveEditor(this.inlineEditorPosition -1);
+            } else {
+                this.removeTokenAtPosition(this.tokens.length -1);
+            }
+            event.preventDefault();
+        } else if (event.key === 'Delete' && cursorAtTheEnd && editorIsEmpty && this._isInlineEditor()) {
+            this.removeTokenAtPosition(this.inlineEditorPosition);
+            this._moveEditor(this.inlineEditorPosition);
+            event.preventDefault();
+        } else if (event.key === 'ArrowRight' && cursorAtTheEnd && editorIsEmpty) {
+            this._moveEditorRight();
+            event.preventDefault();
+        } else if (event.key === 'ArrowLeft' && cursorAtTheStart && editorIsEmpty) {
+            this._moveEditorLeft();
             event.preventDefault();
         }
+    }
+
+    _onEditorInput(event) {
+        this._updateInlineEditorWidth();
     }
 
     _onMouseDown(event) {
         if (event.defaultPrevented) {
             return;
         }
-        let editor = this.shadowRoot.getElementById('editor');
+        const editor = this._getEditor();
         if (event.target !== editor) {
             editor.focus();
             event.preventDefault();
@@ -112,14 +154,25 @@ class TokenField extends LitElement {
         }
     }
 
-    removeToken(token) {
-        this.removeTokenByIndex(this.indexOf(token));
+    addTokenAtPosition(token, position) {
+        if (!this.containsToken(token) && position >= 0 && position <= this.tokens.length) {
+            console.log(`Adding token "${token}" to position ${position}`);
+            this.tokens.splice(position, 0, token);
+            this.requestUpdate();
+        }
     }
 
-    removeTokenByIndex(tokenIndex) {
-        if (tokenIndex > -1 && tokenIndex < this.tokens.length) {
-            let removed = this.tokens.splice(tokenIndex, 1);
-            console.log(`Removed token "${removed}" at index ${tokenIndex}`);
+    removeToken(token) {
+        this.removeTokenAtPosition(this.indexOf(token));
+    }
+
+    removeTokenAtPosition(position) {
+        if (position > -1 && position < this.tokens.length) {
+            const removed = this.tokens.splice(position, 1);
+            console.log(`Removed token "${removed}" at position ${position}`);
+            if (this.tokens.length == 0) {
+                this._moveEditor(-1);
+            }
             this.requestUpdate();
         }
     }
@@ -132,10 +185,82 @@ class TokenField extends LitElement {
         return this.tokens.indexOf(token);
     }
 
-    _createToken(token) {
+    _createToken(token, index) {
         return html`
-            <div class="token">${token}</div>
+            <div class="token" style="order: ${index * 2}">${token}</div>
         `;
+    }
+
+    _isInlineEditor() {
+        return this.inlineEditorPosition > -1;
+    }
+
+    _moveEditorLeft() {
+        if (this.inlineEditorPosition == -1) {
+            this._moveEditor(this.tokens.length -1);
+        } else if (this.inlineEditorPosition > 0) {
+            this._moveEditor(this.inlineEditorPosition -1);
+        }
+    }
+
+    _moveEditorRight() {
+        if (this.inlineEditorPosition > -1) {
+            this._moveEditor(this.inlineEditorPosition +1);
+        }
+    }
+
+    _moveEditor(position) {
+        const editor = this._getEditor();
+
+        if (this.tokens.length > 0 && position > -1 && position < this.tokens.length) {
+            console.log(`Moving editor to position ${position}`);
+            editor.style.order = (position * 2) -1;
+            editor.classList.add('inline');
+            this.inlineEditorPosition = position;
+        } else if (this.inlineEditorPosition > -1) {
+            console.log('Moving editor to default position');
+            editor.style.order = Number.MAX_SAFE_INTEGER;
+            editor.classList.remove('inline');
+            this.inlineEditorPosition = -1;
+        }
+        editor.focus();
+    }
+
+    _updateInlineEditorWidth() {
+        if (this._isInlineEditor()) {
+            const editor = this._getEditor();
+            const width = this._getTextWidthInPixels(editor.value);
+            if (width == 0) {
+                editor.style.width = 0;
+            } else {
+                editor.style.width = `${width + 10}px`;
+            }
+        }
+    }
+
+    _clearEditor() {
+        console.log('Clearing editor');
+        const editor = this._getEditor();
+        editor.style.width = 0;
+        editor.value = '';
+    }
+
+    _getTextWidthInPixels(text) {
+        const ctx = this._getCanvas().getContext('2d');
+        ctx.font = this._getEditor().font;   
+        return Math.ceil(ctx.measureText(text).width);
+    }
+
+    _getEditorContainer() {
+        return this.shadowRoot.getElementById('editorContainer');
+    }
+
+    _getEditor() {
+        return this.shadowRoot.getElementById('editor');
+    }
+
+    _getCanvas() {
+        return this.shadowRoot.getElementById('canvas');
     }
 }
 
