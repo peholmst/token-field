@@ -50,7 +50,7 @@ class TokenField extends LitElement {
                 background-color: lightgray;
                 border-radius: 4px;
                 padding: 2px 4px;
-                box-shadow: 1px 1px 2px lightgray;
+                box-shadow: 1px 1px 2px gray;
                 display: inline-block;
                 margin-right: 5px;
                 margin-bottom: 2px;
