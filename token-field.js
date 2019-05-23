@@ -47,7 +47,7 @@ class TokenField extends LitElement {
             }
 
             .token {
-                background-color: greenyellow;
+                background-color: lightgray;
                 border-radius: 4px;
                 padding: 2px 4px;
                 box-shadow: 1px 1px 2px lightgray;
@@ -83,7 +83,7 @@ class TokenField extends LitElement {
                     let i = 0;
                     return (token) => this._createToken(token, i++);
                 }.bind(this)())}
-                <input type="text" id="editor" style="order: ${Number.MAX_SAFE_INTEGER}" @keydown=${this._onEditorKeyDown} @input=${this._onEditorInput}>
+                <input type="text" id="editor" style="order: ${Number.MAX_SAFE_INTEGER}" @keydown=${this._onEditorKeyDown} @input=${this._onEditorInput} @blur=${this._onEditorBlur}>
             </div>
             <canvas id="canvas"></canvas>
         `;
@@ -133,6 +133,11 @@ class TokenField extends LitElement {
 
     _onEditorInput(event) {
         this._updateInlineEditorWidth();
+    }
+
+    _onEditorBlur(event) {
+        this._clearEditor();
+        this._moveEditor(-1, false);
     }
 
     _onMouseDown(event) {
@@ -240,7 +245,7 @@ class TokenField extends LitElement {
         }
     }
 
-    _moveEditor(position) {
+    _moveEditor(position, focus = true) {
         const editor = this._getEditor();
 
         if (this.tokens.length > 0 && position > -1 && position < this.tokens.length) {
@@ -254,7 +259,9 @@ class TokenField extends LitElement {
             editor.classList.remove('inline');
             this.inlineEditorPosition = -1;
         }
-        editor.focus();
+        if (focus) {
+            editor.focus();
+        }
     }
 
     _updateInlineEditorWidth() {
@@ -295,7 +302,6 @@ class TokenField extends LitElement {
     }
 }
 
-// TODO: Move editor to default position when the token field is focused
 // TODO: Change order of tokens by dragging and dropping them
 // TODO: Select tokens from list of predefined tokens, optionally allowing nonexistent tokens and even adding new ones to the list
 // TODO: Test in Safari and FireFox
