@@ -73,7 +73,7 @@ class TokenField extends LitElement {
         super();
         this.tokenSeparator = " ";
         this.tokens = [];
-        this.inlineEditorPosition = -1;
+        this._inlineEditorPosition = -1;
     }
 
     render() {
@@ -86,6 +86,12 @@ class TokenField extends LitElement {
                 <input type="text" id="editor" style="order: ${Number.MAX_SAFE_INTEGER}" @keydown=${this._onEditorKeyDown} @input=${this._onEditorInput} @blur=${this._onEditorBlur}>
             </div>
             <canvas id="canvas"></canvas>
+        `;
+    }
+
+    _createToken(token, index) {
+        return html`
+            <div class="token" style="order: ${index * 2}" data-token="${token}">${token}</div>
         `;
     }
 
@@ -102,8 +108,8 @@ class TokenField extends LitElement {
             const token = editor.value.trim();
             if (token.length > 0) {
                 if (this._isInlineEditor()) {
-                    this.addTokenAtPosition(token, this.inlineEditorPosition);
-                    this._moveEditor(this.inlineEditorPosition + 1);
+                    this.addTokenAtPosition(token, this._inlineEditorPosition);
+                    this._moveEditor(this._inlineEditorPosition + 1);
                 } else {
                     this.addToken(token);
                 }
@@ -112,15 +118,15 @@ class TokenField extends LitElement {
             event.preventDefault();
         } else if (event.key === 'Backspace' && cursorAtTheStart && editorIsEmpty) {
             if (this._isInlineEditor()) {
-                this.removeTokenAtPosition(this.inlineEditorPosition - 1);
-                this._moveEditor(this.inlineEditorPosition - 1);
+                this.removeTokenAtPosition(this._inlineEditorPosition - 1);
+                this._moveEditor(this._inlineEditorPosition - 1);
             } else {
                 this.removeTokenAtPosition(this.tokens.length - 1);
             }
             event.preventDefault();
         } else if (event.key === 'Delete' && cursorAtTheEnd && editorIsEmpty && this._isInlineEditor()) {
-            this.removeTokenAtPosition(this.inlineEditorPosition);
-            this._moveEditor(this.inlineEditorPosition);
+            this.removeTokenAtPosition(this._inlineEditorPosition);
+            this._moveEditor(this._inlineEditorPosition);
             event.preventDefault();
         } else if (event.key === 'ArrowRight' && cursorAtTheEnd && editorIsEmpty) {
             this._moveEditorRight();
@@ -184,7 +190,7 @@ class TokenField extends LitElement {
 
     addToken(token) {
         if (!this.containsToken(token)) {
-            console.log(`Adding token "${token}"`);
+            console.debug(`Adding token "${token}"`);
             this.tokens.push(token);
             this.requestUpdate();
         }
@@ -192,7 +198,7 @@ class TokenField extends LitElement {
 
     addTokenAtPosition(token, position) {
         if (!this.containsToken(token) && position >= 0 && position <= this.tokens.length) {
-            console.log(`Adding token "${token}" to position ${position}`);
+            console.debug(`Adding token "${token}" to position ${position}`);
             this.tokens.splice(position, 0, token);
             this.requestUpdate();
         }
@@ -205,7 +211,7 @@ class TokenField extends LitElement {
     removeTokenAtPosition(position) {
         if (position > -1 && position < this.tokens.length) {
             const removed = this.tokens.splice(position, 1);
-            console.log(`Removed token "${removed}" at position ${position}`);
+            console.debug(`Removed token "${removed}" at position ${position}`);
             if (this.tokens.length == 0) {
                 this._moveEditor(-1);
             }
@@ -221,27 +227,21 @@ class TokenField extends LitElement {
         return this.tokens.indexOf(token);
     }
 
-    _createToken(token, index) {
-        return html`
-            <div class="token" style="order: ${index * 2}" data-token="${token}">${token}</div>
-        `;
-    }
-
     _isInlineEditor() {
-        return this.inlineEditorPosition > -1;
+        return this._inlineEditorPosition > -1;
     }
 
     _moveEditorLeft() {
-        if (this.inlineEditorPosition == -1) {
+        if (this._inlineEditorPosition == -1) {
             this._moveEditor(this.tokens.length - 1);
-        } else if (this.inlineEditorPosition > 0) {
-            this._moveEditor(this.inlineEditorPosition - 1);
+        } else if (this._inlineEditorPosition > 0) {
+            this._moveEditor(this._inlineEditorPosition - 1);
         }
     }
 
     _moveEditorRight() {
-        if (this.inlineEditorPosition > -1) {
-            this._moveEditor(this.inlineEditorPosition + 1);
+        if (this._inlineEditorPosition > -1) {
+            this._moveEditor(this._inlineEditorPosition + 1);
         }
     }
 
@@ -249,15 +249,15 @@ class TokenField extends LitElement {
         const editor = this._getEditor();
 
         if (this.tokens.length > 0 && position > -1 && position < this.tokens.length) {
-            console.log(`Moving editor to position ${position}`);
+            console.debug(`Moving editor to position ${position}`);
             editor.style.order = (position * 2) - 1;
             editor.classList.add('inline');
-            this.inlineEditorPosition = position;
-        } else if (this.inlineEditorPosition > -1) {
-            console.log('Moving editor to default position');
+            this._inlineEditorPosition = position;
+        } else if (this._inlineEditorPosition > -1) {
+            console.debug('Moving editor to default position');
             editor.style.order = Number.MAX_SAFE_INTEGER;
             editor.classList.remove('inline');
-            this.inlineEditorPosition = -1;
+            this._inlineEditorPosition = -1;
         }
         if (focus) {
             editor.focus();
@@ -277,7 +277,7 @@ class TokenField extends LitElement {
     }
 
     _clearEditor() {
-        console.log('Clearing editor');
+        console.debug('Clearing editor');
         const editor = this._getEditor();
         editor.style.width = 0;
         editor.value = '';
@@ -302,7 +302,6 @@ class TokenField extends LitElement {
     }
 }
 
-// TODO: Change order of tokens by dragging and dropping them
 // TODO: Select tokens from list of predefined tokens, optionally allowing nonexistent tokens and even adding new ones to the list
 // TODO: Test in Safari and FireFox
 // TODO: Themeing
