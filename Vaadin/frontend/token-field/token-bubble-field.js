@@ -133,21 +133,24 @@ class TokenBubbleField extends ControlStateMixin(PolymerElement) {
         return {
             value: {
                 type: Array,
-                notify: true
+                value: function () {
+                    return [];
+                }
             },
             tokens: {
                 type: Array,
-                notify: true
+                value: function () {
+                    return [];
+                }
             },
             __availableTokens: {
                 type: Array,
-                notify: true,
                 computed: '__computeAvailableTokens(value.*, tokens.*)'
             },
             __focusedToken: {
                 type: String,
-                notify: true,
-                readonly: true
+                readonly: true,
+                value: null
             },
             label: {
                 type: String
@@ -158,11 +161,14 @@ class TokenBubbleField extends ControlStateMixin(PolymerElement) {
         };
     }
 
+    static get observers() {
+        return [
+            '__onValueChanged(value.splices)'
+        ];
+    }
+
     constructor() {
         super();
-        this.value = [];
-        this.tokens = [];
-        this.__focusedToken = null;
     }
 
     get focusElement() {
@@ -199,6 +205,17 @@ class TokenBubbleField extends ControlStateMixin(PolymerElement) {
         }
 
         return availableTokens;
+    }
+
+    __onValueChanged(changeRecord) {
+        if (changeRecord) {
+            console.debug(changeRecord);
+            this.dispatchEvent(new CustomEvent('value-array-changed', {
+                detail: {
+                    value: changeRecord.indexSplices[0].object
+                }
+            }));
+        }
     }
 
     __getTokenLabel(token) {
@@ -317,7 +334,7 @@ class TokenBubbleField extends ControlStateMixin(PolymerElement) {
     static __getArrayElement(array, position, offset) {
         let newPosition = position + offset;
         if (newPosition < 0) {
-            newPosition = array.length -1;
+            newPosition = array.length - 1;
         } else if (newPosition >= array.length) {
             newPosition = 0;
         }

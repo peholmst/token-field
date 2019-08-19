@@ -1,8 +1,13 @@
 package net.pkhapps.tokenfield;
 
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
+
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 @Route("")
 public class TestView extends VerticalLayout {
@@ -21,6 +26,12 @@ public class TestView extends VerticalLayout {
         TokenBubbleField<String> stringTokenBubbleField = new TokenBubbleField<>();
         stringTokenBubbleField.setLabel("Token Bubble Field");
         stringTokenBubbleField.setItems("TokenA", "TokenB", "TokenC", "TokenD");
+        stringTokenBubbleField.addValueChangeListener(event -> Notification.show("Tokens: " + String.join("", event.getValue())));
         add(stringTokenBubbleField);
+
+        Button setValuesProgrammatically = new Button("Set Values Programmatically", event -> {
+            stringTokenBubbleField.setValue(Collections.singleton("TokenC"));
+        });
+        add(setValuesProgrammatically);
     }
 }

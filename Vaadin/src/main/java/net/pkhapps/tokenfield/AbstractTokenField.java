@@ -7,6 +7,7 @@ import com.vaadin.flow.component.ItemLabelGenerator;
 import com.vaadin.flow.data.binder.HasItems;
 import com.vaadin.flow.data.selection.MultiSelect;
 import com.vaadin.flow.data.selection.MultiSelectionListener;
+import com.vaadin.flow.dom.DomEvent;
 import com.vaadin.flow.function.SerializableComparator;
 import com.vaadin.flow.shared.Registration;
 import elemental.json.Json;
@@ -15,6 +16,7 @@ import elemental.json.JsonValue;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @param <C>
@@ -23,6 +25,7 @@ import java.util.function.Function;
 public abstract class AbstractTokenField<C extends AbstractTokenField<C, V>, V> extends AbstractField<C, Set<V>>
         implements MultiSelect<C, V>, HasItems<V>, HasSize, Focusable<C> {
 
+    private Map<String, V> items = Collections.emptyMap();
     private ItemLabelGenerator<V> itemLabelGenerator = Object::toString;
     private ItemIdGenerator<V> itemIdGenerator = Object::toString;
     private SerializableComparator<V> itemComparator = createDefaultItemComparator();
@@ -32,10 +35,29 @@ public abstract class AbstractTokenField<C extends AbstractTokenField<C, V>, V> 
      */
     public AbstractTokenField() {
         super(Collections.emptySet());
+        registerElementValueChangeListener();
     }
 
     private SerializableComparator<V> createDefaultItemComparator() {
         return (o1, o2) -> Comparator.comparing(getItemLabelGenerator()).compare(o1, o2);
+    }
+
+    private void registerElementValueChangeListener() {
+        getElement().addEventListener("value-array-changed", this::handleElementValueChange).addEventData("event.detail.value");
+    }
+
+    private void handleElementValueChange(DomEvent event) {
+        JsonArray jsonValue = event.getEventData().getArray("event.detail.value");
+        Set<V> value = new HashSet<>();
+        for (int i = 0; i < jsonValue.length(); ++i) {
+            V item = items.get(jsonValue.getString(i));
+            if (item != null) {
+                value.add(item);
+            } else {
+                // TODO Issue warning
+            }
+        }
+        setModelValue(value, true);
     }
 
     /**
@@ -99,29 +121,33 @@ public abstract class AbstractTokenField<C extends AbstractTokenField<C, V>, V> 
 
     @Override
     protected void setPresentationValue(Set<V> newPresentationValue) {
-
+        getElement().setPropertyJson("value", convertItemsToJson(newPresentationValue, this::createIdJson));
     }
 
     @Override
     public void updateSelection(Set<V> addedItems, Set<V> removedItems) {
-
+        Set<V> value = new HashSet<>(getValue());
+        value.addAll(addedItems);
+        value.removeAll(removedItems);
+        setValue(value);
     }
 
     @Override
     public Set<V> getSelectedItems() {
-        return null;
+        return getValue();
     }
 
     @Override
     public Registration addSelectionListener(MultiSelectionListener<C, V> listener) {
-        return null;
+        return null; // TODO Implement me
     }
 
     @Override
     public void setItems(Collection<V> items) {
+        Objects.requireNonNull(items, "items must not be null");
+        this.items = items.stream().collect(Collectors.toMap(getItemIdGenerator(), v -> v));
         getElement().setPropertyJson("tokens", convertItemsToJson(items, this::createIdJson));
         // TODO Labels
-        //getElement().callJsFunction("setLabels", convertItemsToJson(items, this::createLabelJson));
     }
 
     private JsonValue createIdJson(V item) {
@@ -135,10 +161,18 @@ public abstract class AbstractTokenField<C extends AbstractTokenField<C, V>, V> 
         return jsonArray;
     }
 
+    /**
+     *
+     * @return
+     */
     public String getLabel() {
         return getElement().getProperty("label", "");
     }
 
+    /**
+     *
+     * @param label
+     */
     public void setLabel(String label) {
         getElement().setProperty("label", label == null ? "" : label);
     }
